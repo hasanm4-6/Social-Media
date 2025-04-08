@@ -36,7 +36,7 @@
 
     <script>
         const token = localStorage.getItem("Token")
-        const socket = io("http://localhost:4000") // Connect to Socket.IO server
+        const socket = io("http://localhost:4000") 
 
         function logout() {
             localStorage.removeItem("Token")
@@ -106,7 +106,6 @@
                     this.reset()
                     form.style.display = "none"
                     fetchAndRenderPosts()
-                    socket.emit("newPost", data) // Emit event to notify server of the new post
                 } 
                 else {
                     alert("Error uploading post: " + data.message)
@@ -130,7 +129,6 @@
             .then(data => {
                 if (data.message) {
                     fetchAndRenderPosts()
-                    socket.emit("postLiked", { postId, likesCount: data.likesCount })
                 }
                 else {
                     alert("Error toggling like: " + data.message)
@@ -166,25 +164,40 @@
             const liked = post.likes.includes(window.userId)
             const heart = liked ? "❤️" : "🤍"
 
-            let postHTML = `
-                <div id="post-${post._id}" class="post" data-liked-by-current-user="${liked}">
+            return `
+                <div id="post-${post._id}" class="post my-4 p-3 border shadow-sm" data-liked-by-current-user="${liked}">
                     <div class="post-content">
-                        <h4>${post.user.name}</h4>
-                        <img src="${post.imageUrl}" alt="Post image" class="img-fluid">
-                        <p>${post.caption}</p>
-                        <button onclick="toggleLike('${post._id}')">${heart} ${post.likesCount} Likes</button>
-                        <button onclick="toggleComments('${post._id}')">💬 ${post.commentCount} Comments</button>  <!-- Show comment count -->
+                        <h5>
+                            ${post.user.name}
+                        </h5>
+
+                        <img src="${post.imageUrl}" alt="Post image" class="img-fluid mb-2">
+
+                        <p>
+                            ${post.caption}
+                        </p>
+
+                        <button onclick="toggleLike('${post._id}')">
+                            ${heart} ${post.likesCount} Likes
+                        </button>
+
+                        <button onclick="toggleComments('${post._id}')">
+                            💬 ${post.commentCount} Comments
+                        </button>  
                     </div>
+
                     <div class="comments" id="comments-section-${post._id}" style="display: none">
                         ${renderComments(post)}
-                        <div class="comment-input">
-                            <input type="text" id="comment-input-${post._id}" placeholder="Write a comment...">
-                            <button onclick="addCommentOrReply('${post._id}')">Post Comment</button>
+                        <div class="comment-input mt-2">
+                            <input type="text" id="comment-input-${post._id}" class="form-control" placeholder="Write a comment...">
+
+                            <button class="btn btn-primary mt-1" onclick="addCommentOrReply('${post._id}')">
+                                Post Comment
+                            </button>
                         </div>
                     </div>
                 </div>
             `
-            return postHTML
         }
 
         function renderComments(post) {
@@ -192,16 +205,31 @@
                 const replies = (comment.replies || []).map(reply => `
                     <div class="border-start ps-3 ms-3 mt-3">
                         <div class="d-flex align-items-baseline flex-wrap gap-2">
-                            <strong class="me-1">${reply.userName}:</strong>
-                            <span class="text-break">${reply.text}</span>
+                            <strong class="me-1">
+                                ${reply.userName}:
+                            </strong>
+
+                            <span class="text-break">
+                                ${reply.text}
+                            </span>
                         </div>
+
                         <div class="d-flex justify-content-between align-items-center mt-1">
-                            <small class="text-muted">${new Date(reply.createdAt).toLocaleString()}</small>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}', '${reply._id}')">Reply</button>
+                            <small class="text-muted">
+                                ${new Date(reply.createdAt).toLocaleString()}
+                            </small>
+
+                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}', '${reply._id}')">
+                                Reply
+                            </button>
                         </div>
+
                         <div id="reply-input-${comment._id}-${reply._id}" class="mt-2" style="display: none">
                             <input type="text" id="reply-text-${comment._id}-${reply._id}" class="form-control mb-1" placeholder="Write a reply...">
-                            <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}', '${reply._id}')">Post Reply</button>
+
+                            <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}', '${reply._id}')">
+                                Post Reply
+                            </button>
                         </div>
                     </div>
                 `).join('')
@@ -209,17 +237,33 @@
                 return `
                     <div class="border rounded p-3 my-2">
                         <div class="d-flex align-items-baseline flex-wrap gap-2">
-                            <strong class="me-1">${comment.userName}:</strong>
-                            <span class="text-break">${comment.text}</span>
+                            <strong class="me-1">
+                                ${comment.userName}:
+                            </strong>
+
+                            <span class="text-break">
+                                ${comment.text}
+                            </span>
                         </div>
+
                         <div class="d-flex justify-content-between align-items-center mt-1">
-                            <small class="text-muted">${new Date(comment.createdAt).toLocaleString()}</small>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}')">Reply</button>
+                            <small class="text-muted">
+                                ${new Date(comment.createdAt).toLocaleString()}
+                            </small>
+
+                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}')">
+                                Reply
+                            </button>
                         </div>
+
                         <div id="reply-input-${comment._id}" class="mt-2" style="display: none">
                             <input type="text" id="reply-text-${comment._id}" class="form-control mb-1" placeholder="Write a reply...">
-                            <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}')">Post Reply</button>
+
+                            <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}')">
+                                Post Reply
+                            </button>
                         </div>
+
                         ${replies}
                     </div>
                 `
@@ -235,9 +279,7 @@
             const inputId = parentReplyId ? `reply-text-${parentCommentId}-${parentReplyId}` : parentCommentId ? `reply-text-${parentCommentId}` : `comment-input-${postId}`
             const text = document.getElementById(inputId).value.trim()
 
-            if (!text) {
-                return alert("Comment or reply cannot be empty.")
-            }
+            if (!text) return alert("Comment or reply cannot be empty.")
 
             fetch("http://localhost:4000/api/posts/comment/reply", {
                 method: "POST",
@@ -264,31 +306,41 @@
                     alert("Error adding comment or reply: " + data.message)
                 }
             })
-            .catch(err => alert("Error: " + err.message))
+            .catch(error => {
+                alert("Error adding comment/reply: " + error.message)
+            })
         }
 
         function toggleReplyInput(postId, parentCommentId, parentReplyId = null) {
             const inputId = parentReplyId ? `reply-input-${parentCommentId}-${parentReplyId}` : `reply-input-${parentCommentId}`
             const input = document.getElementById(inputId)
-            if (input) {
-                input.style.display = input.style.display === "none" ? "block" : "none"
-            }
+            if (input) input.style.display = input.style.display === "none" ? "block" : "none"
         }
 
         socket.on('postLiked', (data) => {
             const postElement = document.getElementById(`post-${data.postId}`)
-            if (!postElement) {
-                return
-            }
+            if (!postElement) return
 
             const likeButton = postElement.querySelector('button')
-            if (!likeButton) {
-                return
-            }
+            if (!likeButton) return
 
             const likedByCurrentUser = postElement.dataset.likedByCurrentUser === "true"
             const heart = likedByCurrentUser ? "❤️" : "🤍"
             likeButton.innerHTML = `${heart} ${data.likesCount} Likes`
+        })
+
+        socket.on("newComment", (data) => {
+            const postElement = document.getElementById(`post-${data.postId}`)
+            if (!postElement) return
+
+            fetchAndRenderPosts() 
+        })
+
+        socket.on("newReply", (data) => {
+            const postElement = document.getElementById(`post-${data.postId}`)
+            if (!postElement) return
+
+            fetchAndRenderPosts() 
         })
 
         fetchAndRenderPosts()
