@@ -8,8 +8,8 @@ const userSecretKEY = "SeCrEtKeY"
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { 
-        user: "@gmail.com", 
-        pass: ""    
+        user: "hasanmunir406@gmail.com", 
+        pass: "vnfp nhao lrqr zmma"    
     },
     logger: true,
     debug: true
@@ -51,18 +51,18 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body
 
     if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' })
+        return res.status(400).json({ message: 'Email and password are required in the ServerSide' })
     }
     
     try {
         const user = await UserModel.findOne({ email })
         if (!user) {
-            return res.status(400).json({ message: 'Invalid email or password' })
+            return res.status(400).json({ message: 'Invalid Email' })
         }
 
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid email or password' })
+            return res.status(400).json({ message: 'Password not matched' })
         }
 
         let token = jwt.sign(
@@ -85,6 +85,8 @@ exports.loginUser = async (req, res) => {
         res.status(500).json({ message: 'Error logging in', error: error.message })
     }
 }
+
+
 
 exports.updateUser = async (req, res) => {
     const { email } = req.params
@@ -147,7 +149,7 @@ exports.getLoggedInUser = (req, res) => {
     } 
     catch (error) {
         console.error("Validation User Error:", error)
-        res.status(401).json({ error: 'Invalid token' })
+        res.status(500).json({ message: "Server error", error: error.message })
     }
 }
 
@@ -156,9 +158,9 @@ exports.sendOTP = async (req, res) => {
 
     try {
         const otp = Math.floor(100000 + Math.random() * 900000)
-        console.log("Generated OTP:", otp)
+
         const mailOptions = {
-            from: "@gmail.com",  
+            from: "hasanmunir406@gmail.com",  
             to: email,  
             subject: "Password Reset OTP", 
             text: `Your OTP for password reset is: ${otp}`  
@@ -166,7 +168,8 @@ exports.sendOTP = async (req, res) => {
 
         transporter.sendMail(mailOptions, (err, info) => {
             if (err) {
-                return res.status(500).json({ error: "Error sending OTP email" })
+                console.error("Nodemailer error:", err)
+                return res.status(500).json({ error: "Error sending OTP email", details: err.message })
             }
             req.session.otp = otp
 
@@ -208,5 +211,39 @@ exports.resetPassword = async (req, res) => {
     catch (error) {
         console.error("Error updating password:", error)
         res.status(500).json({ error: "Error updating password", details: error.message })
+    }
+}
+
+exports.changePassword = async (req, res) => {
+    const { email, oldPassword, newPassword } = req.body
+
+    if (!email || !oldPassword || !newPassword) {
+        return res.status(400).json({ message: 'Email and passwords are required' })
+    }
+    
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+        const user = await UserModel.findOne({ email })
+        if (!user) {
+            return res.status(400).json({ message: 'User not found' })
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password)
+        if (!isMatch) {
+            return res.status(400).json({ message: "Old Password doesn't match" })
+        }
+
+        const updatedUser = await UserModel.findByIdAndUpdate(
+            user._id, 
+            { password: hashedPassword }, 
+            { new: true }
+        )
+
+        res.status(200).json({ message: "Password updated successfully", user: updatedUser })
+    }
+    catch (error) {
+        console.error("Error changing password:", error)
+        return res.status(500).json({ message: 'Error changing password', error: error.message })
     }
 }
