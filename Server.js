@@ -12,7 +12,6 @@ const path = require("path")
 dotenv.config()
 const app = express()
 
-// Create HTTP server and initialize Socket.IO
 const server = http.createServer(app)
 const io = socketIo(server)
 
@@ -36,11 +35,9 @@ app.get("/", (req, res) => {
 app.use("/api/posts", postRoutes)
 app.use("/api/users", userRoutes)
 
-// Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("A user connected")
 
-  // Handle disconnect
   socket.on("disconnect", () => {
     console.log("A user disconnected")
   })
@@ -51,13 +48,11 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.log("Database connection error:", err))
 
-// Start the server with Socket.IO enabled
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}/`)
 })
 
-// Attach io to the app so that it can be accessed in routes and controllers
 app.set('io', io)
 
 module.exports = io
