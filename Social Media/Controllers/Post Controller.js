@@ -2,7 +2,7 @@ const PostModel = require("../Models/Post Model")
 const { CommentModel, ReplyModel } = require("../Models/Comment Model")
 const UserModel = require("../Models/User Model")
 const mongoose = require("mongoose")
-const io = require('../../Server') 
+const io = require('../../ServerSM') 
 
 exports.uploadPost = async (req, res) => {
     try {
@@ -73,7 +73,7 @@ exports.toggleLike = async (req, res, io) => {
         const { userId } = req.body
         const { postId } = req.params
 
-        if (!userId) return res.status(400).json({ message: "User ID is required" })
+        if (!userId) return res.status(400).json({ message: "User ID is required in the ServerSide" })
 
         const post = await PostModel.findById(postId)
         if (!post) return res.status(404).json({ message: "Post not found" })
@@ -90,7 +90,6 @@ exports.toggleLike = async (req, res, io) => {
         }
 
         await post.save()
-        console.log("IO Console",io)
 
         io.emit('postLiked', {
             postId: post._id,
@@ -106,11 +105,11 @@ exports.toggleLike = async (req, res, io) => {
     } 
     catch (error) {
         console.error("Like Dislike Post Error:", error)
-        res.status(500).json({ error: error.message }) 
+        res.status(500).json({ message: "Server error", error: error.message }) 
     }
 }
 
-exports.addCommentOrReply = async (req, res) => {
+exports.addCommentOrReply = async (req, res, io) => {
     try {
         const { postId, parentCommentId, parentReplyId, userId, userName, text } = req.body
 
@@ -123,44 +122,78 @@ exports.addCommentOrReply = async (req, res) => {
                 parentComment: null
             })
             await newComment.save()
+
+            io.emit("newComment", {
+                postId,
+                comment: {
+                    _id: newComment._id,
+                    userName,
+                    text,
+                    createdAt: newComment.createdAt
+                }
+            })
+
             return res.status(201).json({ message: "Comment added", comment: newComment })
         }
 
         if (parentReplyId) {
             const parentReply = await ReplyModel.findById(parentReplyId)
             if (!parentReply) {
-                return res.status(404).json({ message: "Parent reply not found" })
+                return res.status(404).json({ message: "Parent reply not found in ServerSide" })
             }
 
             const newReply = new ReplyModel({
-                parentComment: parentReply.parentComment, 
-                parentReply: parentReplyId, 
+                parentComment: parentReply.parentComment,
+                parentReply: parentReplyId,
                 user: userId,
                 userName,
                 text,
                 createdAt: new Date()
             })
             await newReply.save()
+
+            io.emit("newReply", {
+                postId,
+                parentCommentId: parentReply.parentComment,
+                parentReplyId,
+                reply: {
+                    _id: newReply._id,
+                    userName,
+                    text,
+                    createdAt: newReply.createdAt
+                }
+            })
+
             return res.status(201).json({ message: "Reply to reply added", reply: newReply })
-        } 
-        else {
+        } else {
             const parentComment = await CommentModel.findById(parentCommentId)
-            if (!parentComment) return res.status(404).json({ message: "Parent comment not found" })
+            if (!parentComment) return res.status(404).json({ message: "Parent comment not found in the ServerSide" })
 
             const newReply = new ReplyModel({
-                parentComment: parentCommentId, 
-                parentReply: null, 
+                parentComment: parentCommentId,
+                parentReply: null,
                 user: userId,
                 userName,
                 text,
                 createdAt: new Date()
             })
             await newReply.save()
+
+            io.emit("newReply", {
+                postId,
+                parentCommentId,
+                reply: {
+                    _id: newReply._id,
+                    userName,
+                    text,
+                    createdAt: newReply.createdAt
+                }
+            })
+
             return res.status(201).json({ message: "Reply added", reply: newReply })
         }
-    } 
-    catch (err) {
+    } catch (err) {
         console.error("Error in addCommentOrReply:", err)
-        res.status(500).json({ message: "Internal server error", error: err.message })
+        res.status(500).json({ message: "Server error", error: err.message })
     }
 }
