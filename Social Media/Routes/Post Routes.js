@@ -22,6 +22,8 @@ router.get("/", getAllPosts)
 router.post("/toggle-like/:postId", authenticateUser, (req, res) => {
     toggleLike(req, res, req.app.get('io'))  
 })
-router.post("/comment/reply", authenticateUser, addCommentOrReply)
+router.post("/comment/reply", authenticateUser, (req, res) => {
+    addCommentOrReply(req, res, req.app.get("io"))
+})
 
 module.exports = router
