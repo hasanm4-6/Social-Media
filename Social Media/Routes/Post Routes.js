@@ -1,7 +1,7 @@
 const express = require("express")
 const multer = require("multer")
 const path = require("path")
-const { uploadPost, getAllPosts, toggleLike, addCommentOrReply } = require("../Controllers/Post Controller")
+const { uploadPost, getAllPosts, toggleLike, addCommentOrReply, commentsRepliesToggleLikes } = require("../Controllers/Post Controller")
 const authenticateUser = require('../Middleware/User Auth')
 
 const router = express.Router()
@@ -24,6 +24,10 @@ router.post("/toggle-like/:postId", authenticateUser, (req, res) => {
 })
 router.post("/comment/reply", authenticateUser, (req, res) => {
     addCommentOrReply(req, res, req.app.get("io"))
+})
+
+router.post("/comment/like", authenticateUser, (req, res) => {
+    commentsRepliesToggleLikes(req, res, req.app.get("io"))
 })
 
 module.exports = router
