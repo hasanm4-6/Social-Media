@@ -12,13 +12,13 @@
         <div class="container">
         <a class="navbar-brand" href="#">Social Media</a>
         <span class="navbar-text" id="userName">
-            <a href="#" id="profileLink" class="navbar-text"></a>
+            <a href="#" id="profileLink" title="link to profile" class="navbar-text"></a>
         </span>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <button id="togglePostForm" class="btn btn-primary">Create Post</button>
+        <button type="button" id="togglePostForm" class="btn btn-primary">Create Post</button>
 
         <form id="postForm" class="card p-4 mt-3 shadow" method="POST" enctype="multipart/form-data">
             <h4>Create Post</h4>
@@ -201,38 +201,70 @@
         }
 
         function renderComments(post) {
+            const commentMap = {}
+            post.comments.forEach(comment => {
+                commentMap[comment._id] = comment
+            })
+
             return post.comments.map(comment => {
-                const replies = (comment.replies || []).map(reply => `
-                    <div class="border-start ps-3 ms-3 mt-3">
-                        <div class="d-flex align-items-baseline flex-wrap gap-2">
-                            <strong class="me-1">
-                                ${reply.userName}:
-                            </strong>
+                const repliesByParent = {}
 
-                            <span class="text-break">
-                                ${reply.text}
-                            </span>
-                        </div>
+                comment.replies.forEach(reply => {
+                    const parentId = reply.parentReply || "root"
+                    if (!repliesByParent[parentId]) repliesByParent[parentId] = []
+                    repliesByParent[parentId].push(reply)
+                })
 
-                        <div class="d-flex justify-content-between align-items-center mt-1">
-                            <small class="text-muted">
-                                ${new Date(reply.createdAt).toLocaleString()}
-                            </small>
+                const renderReplies = (parentId) => {
+                    const replies = repliesByParent[parentId] || []
+                    return replies.map(reply => {
+                        const replyLiked = reply.likes.includes(window.userId)
+                        const replyHeart = replyLiked ? "❤️" : "🤍"
 
-                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}', '${reply._id}')">
-                                Reply
-                            </button>
-                        </div>
+                        return `
+                            <div class="border-start ps-3 ms-3 mt-3">
+                                <div class="d-flex align-items-baseline flex-wrap gap-2">
+                                    <strong class="me-1">
+                                        ${reply.userName}:
+                                    </strong>
 
-                        <div id="reply-input-${comment._id}-${reply._id}" class="mt-2" style="display: none">
-                            <input type="text" id="reply-text-${comment._id}-${reply._id}" class="form-control mb-1" placeholder="Write a reply...">
+                                    <span class="text-break">
+                                        ${reply.text}
+                                    </span>
+                                </div>
 
-                            <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}', '${reply._id}')">
-                                Post Reply
-                            </button>
-                        </div>
-                    </div>
-                `).join('')
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <small class="text-muted">
+                                        ${new Date(reply.createdAt).toLocaleString()}
+                                    </small>
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button id="reply-like-${reply._id}" class="btn btn-sm like-btn" onclick="toggleCommentLike('${reply._id}', 'reply')">
+                                            ${replyHeart} ${reply.likesCount} Likes
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}', '${reply._id}')">
+                                            Reply
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="reply-input-${comment._id}-${reply._id}" class="mt-2" style="display: none">
+                                    <input type="text" id="reply-text-${comment._id}-${reply._id}" class="form-control mb-1" placeholder="Write a reply...">
+
+                                    <button class="btn btn-sm btn-primary" onclick="addCommentOrReply('${post._id}', '${comment._id}', '${reply._id}')">
+                                        Post Reply
+                                    </button>
+                                </div>
+
+                                ${renderReplies(reply._id)}
+                            </div>
+                        `
+                    }).join('')
+                }
+
+                const commentLiked = comment.likes.includes(window.userId)
+                const commentHeart = commentLiked ? "❤️" : "🤍"
 
                 return `
                     <div class="border rounded p-3 my-2">
@@ -251,9 +283,15 @@
                                 ${new Date(comment.createdAt).toLocaleString()}
                             </small>
 
-                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}')">
-                                Reply
-                            </button>
+                            <div class="d-flex align-items-center gap-2">
+                                <button id="comment-like-${comment._id}" class="btn btn-sm like-btn" onclick="toggleCommentLike('${comment._id}', 'comment')">
+                                    ${commentHeart} ${comment.likesCount} Likes
+                                </button>
+
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleReplyInput('${post._id}', '${comment._id}')">
+                                    Reply
+                                </button>
+                            </div>
                         </div>
 
                         <div id="reply-input-${comment._id}" class="mt-2" style="display: none">
@@ -264,7 +302,7 @@
                             </button>
                         </div>
 
-                        ${replies}
+                        ${renderReplies("root")}
                     </div>
                 `
             }).join('') || "<p>No comments yet.</p>"
@@ -317,6 +355,29 @@
             if (input) input.style.display = input.style.display === "none" ? "block" : "none"
         }
 
+        function toggleCommentLike(id, type) {
+            fetch("/api/posts/comment/like", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                 },
+                body: JSON.stringify({ id, type, userId: window.userId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    fetchAndRenderPosts()
+                }
+                else {
+                    alert("Error toggling like: " + data.message)
+                }
+            })
+            .catch(err => {
+                console.error("Error toggling comment like:", err.message)
+            })
+        }
+
         socket.on('postLiked', (data) => {
             const postElement = document.getElementById(`post-${data.postId}`)
             if (!postElement) return
@@ -341,6 +402,17 @@
             if (!postElement) return
 
             fetchAndRenderPosts() 
+        })
+
+        socket.on("commentLikeUpdate", ({ type, id, likesCount, likes }) => {
+            const targetId = type === "comment" ? `comment-like-${id}` : `reply-like-${id}`
+            const btn = document.getElementById(targetId)
+
+            if (btn) {
+                const hasLiked = likes.includes(window.userId) 
+                const heart = hasLiked ? "❤️" : "🤍"
+                btn.innerHTML = `${heart} ${likesCount} Likes`
+            }
         })
 
         fetchAndRenderPosts()
