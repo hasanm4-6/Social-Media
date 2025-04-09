@@ -197,3 +197,68 @@ exports.addCommentOrReply = async (req, res, io) => {
         res.status(500).json({ message: "Server error", error: err.message })
     }
 }
+
+exports.commentsRepliesToggleLikes = async (req, res, io) => {
+    try {
+        const { type, id, userId } = req.body
+    
+        if (type === "comment") {
+            const comment = await CommentModel.findById(id)
+            if (!comment) return res.status(404).json({ message: "Comment not found" })
+    
+            const alreadyLiked = comment.likes.includes(userId)
+    
+            if (alreadyLiked) {
+                comment.likes.pull(userId)
+                comment.likesCount--
+            } else {
+                comment.likes.push(userId)
+                comment.likesCount++
+            }
+    
+            await comment.save()
+    
+            io.emit("commentLikeUpdate", {
+                type: "comment",
+                id: comment._id,
+                likesCount: comment.likesCount,
+                likes: comment.likes 
+            })
+
+            return res.status(200).json({ message: "Comment like toggled", liked: !alreadyLiked })
+        }
+    
+        if (type === "reply") {
+            const reply = await ReplyModel.findById(id)
+            if (!reply) return res.status(404).json({ message: "Reply not found" })
+
+            const alreadyLiked = reply.likes.includes(userId)
+    
+            if (alreadyLiked) {
+                reply.likes.pull(userId)
+                reply.likesCount--
+            } 
+            else {
+                reply.likes.push(userId)
+                reply.likesCount++
+            }
+    
+            await reply.save()
+    
+            io.emit("commentLikeUpdate", {
+                type: "reply",
+                id: reply._id,
+                likesCount: reply.likesCount,
+                likes: reply.likes 
+            })
+
+            return res.status(200).json({ message: "Reply like toggled", liked: !alreadyLiked })
+        }
+    
+        res.status(400).json({ message: "Invalid type" })
+    } 
+    catch (err) {
+        console.error("Error in toggleLike:", err)
+        res.status(500).json({ message: "Server error", error: err.message })
+    }
+}
