@@ -13,7 +13,10 @@
         <h2 class="text-center">Forgot Password</h2>
         <form id="forgotPasswordForm" class="card p-4 shadow">
             <input type="email" id="email" class="form-control mb-3" placeholder="Enter your registered email" required>
-            <button type="submit" class="btn btn-warning w-100">Send OTP</button>
+            <button type="submit" class="btn btn-warning w-100 d-flex justify-content-center align-items-center gap-2" id="sendOtpBtn">
+                <span class="spinner-border spinner-border-sm d-none" role="status" id="otpSpinner"></span>
+                <span id="SendOTPSpan">Send OTP</span>
+            </button>
             <button type="button" onclick="window.location.href = 'login.html'" class="btn btn-secondary w-100 mt-2">Back to Login</button>
         </form>
 
@@ -29,7 +32,10 @@
 
         document.getElementById("ResetPasswordForm").style.display =  "none" 
 
-        document.getElementById("forgotPasswordForm").addEventListener("submit", function (e) {
+        const forgotForm = document.getElementById("forgotPasswordForm")
+        const sendOtpBtn = forgotForm.querySelector("button[type='submit']")
+
+        forgotForm.addEventListener("submit", function (e) {
             e.preventDefault()
 
             const email = document.getElementById("email").value
@@ -39,12 +45,19 @@
                 return
             }
 
+            const sendOtpBtn = document.getElementById("sendOtpBtn")
+            const spinner = document.getElementById("otpSpinner")
+
+            sendOtpBtn.disabled = true
+            document.getElementById("SendOTPSpan").innerText = "Sending OTP"
+            spinner.classList.remove("d-none")
+
             fetch("http://localhost:4000/api/users/sendOtp", {
-                method: "POST",             
-                headers: { 
+                method: "POST",
+                headers: {
                     "Content-Type": "application/json"
-                },    
-                credentials: "include", 
+                },
+                credentials: "include",
                 body: JSON.stringify({ email })
             })
             .then(response => response.json())
@@ -54,6 +67,11 @@
             })
             .catch(error => {
                 alert("Error sending OTP: " + error.message)
+            })
+            .finally(() => {
+                sendOtpBtn.disabled = false
+                document.getElementById("SendOTPSpan").innerText = "Send OTP"
+                spinner.classList.add("d-none")
             })
         })
 
