@@ -247,3 +247,21 @@ exports.changePassword = async (req, res) => {
         return res.status(500).json({ message: 'Error changing password', error: error.message })
     }
 }
+
+exports.profileFetch = async (req, res) => {
+    try {
+        const email = decodeURIComponent(req.params.email)
+        const user = await UserModel.findOne({ email })
+        if (!user) return res.status(404).json({ error: "User not found" })
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email
+        })
+    } 
+    catch (err) {
+        console.error("Error fetching profile:", err)
+        res.status(500).json({ error: "Internal server error" })
+    }
+}
