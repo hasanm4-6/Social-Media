@@ -61,7 +61,7 @@
                 logout()
             } 
             else {
-                window.userId = data.id
+                window.loggedInUserId = data.id
                 const profileLink = document.getElementById("profileLink")
                 profileLink.href = `profile.html?email=${data.email}`
                 profileLink.innerText = `${data.name}`
@@ -123,7 +123,7 @@
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ userId: window.userId }),
+                body: JSON.stringify({ userId: window.loggedInUserId }),
             })
             .then(res => res.json())
             .then(data => {
@@ -161,7 +161,7 @@
         }
 
         function generatePostHTML(post) {
-            const liked = post.likes.includes(window.userId)
+            const liked = post.likes.includes(window.loggedInUserId)
             const heart = liked ? "❤️" : "🤍"
 
             return `
@@ -218,7 +218,7 @@
                 const renderReplies = (parentId) => {
                     const replies = repliesByParent[parentId] || []
                     return replies.map(reply => {
-                        const replyLiked = reply.likes.includes(window.userId)
+                        const replyLiked = reply.likes.includes(window.loggedInUserId)
                         const replyHeart = replyLiked ? "❤️" : "🤍"
 
                         return `
@@ -263,7 +263,7 @@
                     }).join('')
                 }
 
-                const commentLiked = comment.likes.includes(window.userId)
+                const commentLiked = comment.likes.includes(window.loggedInUserId)
                 const commentHeart = commentLiked ? "❤️" : "🤍"
 
                 return `
@@ -329,7 +329,7 @@
                     postId,
                     parentCommentId,
                     parentReplyId,
-                    userId: window.userId,
+                    userId: window.loggedInUserId,
                     userName: document.getElementById("userName").innerText,
                     text,
                 }),
@@ -362,7 +362,7 @@
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                  },
-                body: JSON.stringify({ id, type, userId: window.userId })
+                body: JSON.stringify({ id, type, userId: window.loggedInUserId })
             })
             .then(res => res.json())
             .then(data => {
@@ -409,7 +409,7 @@
             const btn = document.getElementById(targetId)
 
             if (btn) {
-                const hasLiked = likes.includes(window.userId) 
+                const hasLiked = likes.includes(window.loggedInUserId) 
                 const heart = hasLiked ? "❤️" : "🤍"
                 btn.innerHTML = `${heart} ${likesCount} Likes`
             }
