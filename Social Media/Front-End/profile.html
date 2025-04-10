@@ -12,7 +12,7 @@
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="landing.html">Social Media</a>
-            <button class="btn btn-danger" onclick="logout()">Logout</button>
+            <button id="logoutButton" class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </nav>
 
@@ -34,7 +34,7 @@
     </form>
 
     <div class="container mt-4" id="allPosts">
-        <h3>Your Posts</h3>
+        <h3 id="postsHeading">Your Posts</h3>
         <div id="postsContainer" class="row gy-3"></div>
     </div>
 
@@ -50,13 +50,14 @@
 
         function fetchProfile() {
             const params = new URLSearchParams(window.location.search)
-            const email = params.get('email')
+            const targetEmail = params.get('email')
 
-            if (!email) {
+            if (!targetEmail) {
                 alert("No email found in URL")
                 return
             }
 
+            // Validate token and get logged-in user
             fetch("http://localhost:4000/api/users/validateToken", {
                 method: "GET",
                 headers: { "Authorization": `Bearer ${token}` }
@@ -66,13 +67,51 @@
                 if (data.error) {
                     alert("Invalid token: " + data.error)
                     logout()
-                } 
-                else {
-                    document.getElementById("profileNameSpan").innerText = `${data.name}`
-                    document.getElementById("profileEmailSpan").innerText = `${data.email}`
-                    window.userId = data.id
-                    window.userName = data.name
-                    window.userEmail = data.email
+                } else {
+                    // Store logged-in user details
+                    const loggedInEmail = data.email
+                    window.loggedInUserId = data.id
+                    window.loggedInUserName = data.name
+                    window.loggedInUserEmail = loggedInEmail
+
+                    // Check if viewing own profile or another user's
+                    if (targetEmail !== loggedInEmail) {
+                        // Hide buttons for non-owner
+                        document.getElementById("logoutButton").style.display = "none"
+                        document.getElementById("changePasswordBtn").style.display = "none"
+                        document.getElementById("ChangePasswordForm").style.display = "none"
+                        document.getElementById("postsHeading").innerText = "All Posts"
+
+                        // Fetch and display the other user's profile
+                        fetch(`http://localhost:4000/api/users/profile/${encodeURIComponent(targetEmail)}`, {
+                            headers: { 
+                                Authorization: `Bearer ${token}`,
+                                'Content-Type': 'application/json' 
+                            }
+                        })
+                        .then(res => res.json())
+                        .then(user => {
+                            document.getElementById("profileNameSpan").innerText = user.name
+                            document.getElementById("profileEmailSpan").innerText = user.email
+                            window.profileUserID = user._id
+                            window.profileUserName = user.name
+                            window.profileUserEmail = user.email
+
+                            fetchMyPosts()
+                        })
+                        .catch(error => {
+                            alert("Error fetching user profile: " + error.message)
+                        })
+                    } 
+                    else {
+                        document.getElementById("profileNameSpan").innerText = data.name
+                        document.getElementById("profileEmailSpan").innerText = data.email
+                        window.profileUserID = data.id
+                        window.profileUserName = data.name
+                        window.profileUserEmail = data.email
+
+                        fetchMyPosts()
+                    }
                 }
             })
             .catch(error => {
@@ -89,7 +128,7 @@
             })
             .then(res => res.json())
             .then(posts => {
-                const myPosts = posts.filter(post => post.user._id === window.userId)
+                const myPosts = posts.filter(post => post.user._id === window.profileUserID)
                 const container = document.getElementById("postsContainer")
                 container.innerHTML = ""
                 myPosts.forEach(post => {
@@ -100,10 +139,6 @@
                 alert("Error fetching posts:" + error)
             })
         }
-
-        fetchMyPosts()
-
-        let emailFromUrl = new URLSearchParams(window.location.search).get('email')
 
         let form = document.getElementById("ChangePasswordForm")
         form.style.display =  "none" 
@@ -137,7 +172,7 @@
                     "Authorization": `Bearer ${token}`  
                 },
                 credentials: "include",
-                body: JSON.stringify({  email: emailFromUrl, oldPassword, newPassword })
+                body: JSON.stringify({  email: window.loggedInUserEmail, oldPassword, newPassword })
 
             })
             .then(response => response.json())
@@ -159,7 +194,7 @@
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ userId: window.userId }),
+                body: JSON.stringify({ userId: window.loggedInUserId }),
             })
             .then(res => res.json())
             .then(data => {
@@ -177,7 +212,7 @@
 
         
         function generatePostHTML(post) {
-            const liked = post.likes.includes(window.userId)
+            const liked = post.likes.includes(window.loggedInUserId)
             const heart = liked ? "❤️" : "🤍"
             return `
                 <div id="post-${post._id}" class="post my-4 p-3 border shadow-sm" data-liked-by-current-user="${liked}">
@@ -233,7 +268,7 @@
                 const renderReplies = (parentId) => {
                     const replies = repliesByParent[parentId] || []
                     return replies.map(reply => {
-                        const replyLiked = reply.likes.includes(window.userId)
+                        const replyLiked = reply.likes.includes(window.loggedInUserId)
                         const replyHeart = replyLiked ? "❤️" : "🤍"
 
                         return `
@@ -278,7 +313,7 @@
                     }).join('')
                 }
 
-                const commentLiked = comment.likes.includes(window.userId)
+                const commentLiked = comment.likes.includes(window.loggedInUserId)
                 const commentHeart = commentLiked ? "❤️" : "🤍"
 
                 return `
@@ -344,8 +379,8 @@
                     postId,
                     parentCommentId,
                     parentReplyId,
-                    userId: window.userId,
-                    userName: window.userName,
+                    userId: window.loggedInUserId,
+                    userName: window.loggedInUserName,
                     text,
                 })
             })
@@ -377,7 +412,7 @@
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                  },
-                body: JSON.stringify({ id, type, userId: window.userId })
+                body: JSON.stringify({ id, type, userId: window.loggedInUserId })
             })
             .then(res => res.json())
             .then(data => {
@@ -425,7 +460,7 @@
             const btn = document.getElementById(targetId)
 
             if (btn) {
-                const hasLiked = likes.includes(window.userId) 
+                const hasLiked = likes.includes(window.loggedInUserId) 
                 const heart = hasLiked ? "❤️" : "🤍"
                 btn.innerHTML = `${heart} ${likesCount} Likes`
             }
@@ -435,7 +470,3 @@
 
 </body>
 </html>
-
-
-
-
