@@ -1,20 +1,33 @@
-const mongoose = require("mongoose")
+const express = require("express")
+const multer = require("multer")
+const path = require("path")
+const { uploadPost, getAllPosts, toggleLike, addCommentOrReply, commentsRepliesToggleLikes } = require("../Controllers/Post Controller")
+const authenticateUser = require('../Middleware/User Auth')
 
-const postSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, 
-    imageUrl: { type: String, required: true },
-    caption: { type: String, required: true },
-    hashtags: { type: String },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], 
-    likesCount: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now }
-}, { timestamps: true }, { toJSON: { virtuals: true }, toObject: { virtuals: true } })
+const router = express.Router()
 
-postSchema.virtual("comments", {
-    ref: "Comment",
-    localField: "_id",
-    foreignField: "post",
-  })
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, "Posts/") 
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + "-" + file.originalname)
+    }
+})
 
-const PostModel = mongoose.model("Post", postSchema)
-module.exports = PostModel
+const upload = multer({ storage })
+
+router.post("/upload", authenticateUser, upload.single("image"), uploadPost)
+router.get("/", getAllPosts) 
+router.post("/toggle-like/:postId", authenticateUser, (req, res) => {
+    toggleLike(req, res, req.app.get('io'))  
+})
+router.post("/comment/reply", authenticateUser, (req, res) => {
+    addCommentOrReply(req, res, req.app.get("io"))
+})
+
+router.post("/comment/like", authenticateUser, (req, res) => {
+    commentsRepliesToggleLikes(req, res, req.app.get("io"))
+})
+
+module.exports = router
