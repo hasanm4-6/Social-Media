@@ -2,7 +2,7 @@ const PostModel = require("../Models/Post Model")
 const { CommentModel, ReplyModel } = require("../Models/Comment Model")
 const UserModel = require("../Models/User Model")
 const mongoose = require("mongoose")
-const io = require('../../ServerSM') 
+const io = require('../../Server.js') 
 
 exports.uploadPost = async (req, res) => {
     try {
