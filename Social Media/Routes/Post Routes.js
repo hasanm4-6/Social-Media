@@ -25,7 +25,6 @@ router.post("/toggle-like/:postId", authenticateUser, (req, res) => {
 router.post("/comment/reply", authenticateUser, (req, res) => {
     addCommentOrReply(req, res, req.app.get("io"))
 })
-
 router.post("/comment/like", authenticateUser, (req, res) => {
     commentsRepliesToggleLikes(req, res, req.app.get("io"))
 })
